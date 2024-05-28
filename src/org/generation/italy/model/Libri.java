@@ -11,4 +11,5 @@ public class Libri {
 	public int numPagine;
 	public int qnt;
 	public int idEditore;
+	
 }
