@@ -20,8 +20,9 @@ class Main {
 		String scelta = new String();
 		Libri libro;
 		ArrayList<Libri> elencoLibri = new ArrayList<Libri>();
-		ArrayList<String> elencoTitoli = new ArrayList<String>();
 		DateTimeFormatter df=DateTimeFormatter.ofPattern("dd/MM/yyyy");
+		Libri l;
+		int posizione;
 		
 		//caricamento arraylist dei libri
 		String url="jdbc:mysql://localhost:3306/biblioteca";
@@ -44,7 +45,6 @@ class Main {
 						libro.qnt=rs.getInt("qnt");
 						libro.idEditore=rs.getInt("id_editore");
 						elencoLibri.add(libro);
-						elencoTitoli.add(libro.titolo);
 					}
 				}
 				System.out.println("Caricamento dati libri dal DataBase avvenuto con successo!");
@@ -55,9 +55,10 @@ class Main {
 		
 		System.out.println("Benvenuto");
 		do {
+			//inizio ciclo do-while per fare più operazioni
 			libro= new Libri();
 			System.out.println("Selezionare il programma da usare immettendo il relativo codice");
-			System.out.println("\n1) Inserimento nuovo libro\n2) Visualizza libri esistenti\n3) Cancellazione libro\n4) Esci");
+			System.out.println("\n1) Inserimento nuovo libro\n2) Visualizza libri esistenti\n3) Cancellazione libro\n4) Modifica libro esistente\n5) Esci");
 			scelta= sc.nextLine().toLowerCase();
 			switch (scelta) {
 				//		----- CASO 1 -----
@@ -70,7 +71,14 @@ class Main {
 					System.out.print("Inserire il titolo del libro: ");
 					libro.titolo=sc.nextLine();
 					//controllo che il libro non sia già presente nella lista
-					if (elencoTitoli.contains(libro.titolo)) {
+					posizione=-1;
+					for (int i=0; i<elencoLibri.size(); i++) {
+						l=elencoLibri.get(i);
+						if (l.titolo.equalsIgnoreCase(libro.titolo)) {
+							posizione=i;
+						}
+					}
+					if (posizione!=-1) {
 						//il libro è già presente
 						System.out.println("ATTENZIONE! Libro già presente nel DataBase!");
 					}else {
@@ -78,6 +86,7 @@ class Main {
 						System.out.println("Libro non presente nel DataBase. Procedere con l'inserimento.");
 						System.out.println("Connessione al DataBase...");
 						try (Connection conn=DriverManager.getConnection(url, "root", "")) {
+							//connessione al DB
 							System.out.println("Connessione riuscita!");
 							
 							
@@ -113,6 +122,7 @@ class Main {
 							String sql="INSERT INTO libri (id_libri, titolo, id_autore, id_genere, data_pubblicazione, num_pagine, qnt, id_editore) "
 									+ "VALUE (null, ?, ?, ?, ?, ?, ?, ?)";
 							try (PreparedStatement ps=conn.prepareStatement(sql)) {
+								//preparazione dell'istruzione
 								//imposto i valori dei parametri da inserire
 								ps.setString(1, libro.titolo);
 								ps.setInt(2, libro.idAutore);
@@ -124,13 +134,26 @@ class Main {
 								
 								//eseguo l'istruzione
 								ps.executeUpdate();
-								libro.id=elencoLibri.size()+1;
-								elencoLibri.add(libro);
-								System.out.println("Libro aggiunto con successo!");
+								
 							}
+							//ora devo cercare l'id autoincrementante assegnato dal DB
+							sql = "SELECT id_libri FROM libri WHERE titolo = ?";
+							try (PreparedStatement cercaId=conn.prepareStatement(sql)) {
+								cercaId.setString(1, libro.titolo);
+								
+								try(ResultSet idCercato=cercaId.executeQuery()) {
+									if (idCercato.next()) {
+										libro.id=idCercato.getInt("id_libri");
+									}
+								}
+							}
+							//adesso che ho tutti i dati del libro, lo aggiungo alla lista
+							elencoLibri.add(libro);
+							System.out.println("Libro aggiunto con successo!");
+							
 							
 						}catch (Exception e) {
-							System.out.println("Errore: "+e);
+							System.err.println("Errore: "+e);
 						}
 					}
 					
@@ -142,19 +165,63 @@ class Main {
 					//scorro la lista dei libri per mostrarli
 					int contatore=0;
 					//uso il ciclo for-each per mostrare ogni elemento della lista elencoLibri
-					for (Libri l:elencoLibri) {
+					for (Libri mostraLibri:elencoLibri) {
 						contatore++;
 						System.out.println("Libro n° "+contatore+"\n");
-						System.out.println("Titolo: "+l.titolo);
-						System.out.println("Data di pubblicazione: "+l.pubblicazione);
-						System.out.println("Numero di pagine: "+l.numPagine);
-						System.out.println("Quantità: "+l.qnt);
+						System.out.println("Titolo: "+mostraLibri.titolo);
+						System.out.println("Id del libro: "+mostraLibri.id);
+						System.out.println("Data di pubblicazione: "+mostraLibri.pubblicazione);
+						System.out.println("Numero di pagine: "+mostraLibri.numPagine);
+						System.out.println("Quantità: "+mostraLibri.qnt);
 					}
+					// AGGIUNGERE LA VISUALIZZAZIONE DI AUTORE, EDITORE E GENERE!
 					break;
-				//casi 3 e 4 da implementare!!!
+				//		----- CASO 3 -----
+				case "3":
+					//passo direttamente al caso successivo
+				case "cancellazione libro":
+					System.out.println("Cancellazione libro");
+					System.out.println("Inserire il titolo del libro da rimuovere:");
+					String titoloRimozione=sc.nextLine();
+					System.out.println("Connessione al DataBase in corso...");
+					try (Connection conn=DriverManager.getConnection(url, "root", "")) {
+						//connessione con il DB
+						System.out.println("Connessione riuscita!");
+						
+						String sql="DELETE FROM libri WHERE titolo LIKE ?";
+						try (PreparedStatement canc=conn.prepareStatement(sql)) {
+							//cancello il libro dal DB
+							canc.setString(1, "%"+titoloRimozione+"%");
+							int righeInteressate=canc.executeUpdate();
+							if (righeInteressate==0) {
+								System.out.println("Non è stato trovato il libro cercato");
+							}else {
+								System.out.println("Numero di libri cancellati: "+righeInteressate);
+							}
+							//cancello il libro dalle liste locali
+							posizione=-1;
+							for (int i=0; i<elencoLibri.size(); i++) {
+								l=elencoLibri.get(i);
+								if (l.titolo.indexOf(titoloRimozione)>=0) {
+									posizione=i;
+								}
+							}
+							if(posizione>=0) {
+								elencoLibri.remove(posizione);
+							}
+						}
+						
+					}catch (Exception e) {
+						System.err.println("Error: "+e);
+					}
+				case "5":
+					//passo al successivo
+				case "esci":
+					System.out.println("Arrivederci!");
+					break;
 			}
 			System.out.println("\n\n\n");
-		} while (!scelta.equals("4"));
+		} while (!scelta.equals("5"));
 		
 		sc.close();
 	}
@@ -170,7 +237,7 @@ class Main {
 				}
 			}
 		}catch (Exception e) {
-			System.out.println("ERRORE: "+e);
+			System.err.println("ERRORE: "+e);
 		}
 		return id;
 	}
