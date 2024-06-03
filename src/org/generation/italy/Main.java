@@ -9,7 +9,11 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
+import org.generation.italy.model.Autori;
+import org.generation.italy.model.Editori;
+import org.generation.italy.model.Generi;
 import org.generation.italy.model.Libri;
 
 class Main {
@@ -18,7 +22,6 @@ class Main {
 		/* TODO :
 		 * Sistemare PROGRAMMA 2:
 		 *  - Aggiungere filtri di ricerca;
-		 *  - Aggiungere visualizzazione autori, editori e generi.
 		 * Aggiungere altre possibilità di ricerca nel PROGRAMMA 4.
 		 * Creare una funzione ANNULLA da usare in qualsiasi momento
 		 * Creare una funzione di aggiornamento dati locali (lista elencoLibri)
@@ -27,35 +30,31 @@ class Main {
 		String scelta = new String();
 		Libri libro;
 		ArrayList<Libri> elencoLibri = new ArrayList<Libri>();
+		ArrayList<Autori> elencoAutori = new ArrayList<Autori>();
+		ArrayList<Generi> elencoGeneri = new ArrayList<Generi>();
+		ArrayList<Editori> elencoEditori = new ArrayList<Editori>();
 		DateTimeFormatter df=DateTimeFormatter.ofPattern("dd/MM/yyyy");
 		Libri l;
 		int posizione;
 		
-		//caricamento arraylist dei libri
+		//caricamento arraylist dal DB
 		String url="jdbc:mysql://localhost:3306/biblioteca";
 		System.out.println("Connessione al DataBase...");
 		try (Connection conn=DriverManager.getConnection(url, "root", "")) {
 			System.out.println("Connessione riuscita!");
 			
-			String sql="SELECT * FROM libri";
-			try (PreparedStatement ps=conn.prepareStatement(sql)) {
-				//provo a creare l'istruzione
-				try (ResultSet rs=ps.executeQuery()) {
-					while (rs.next()) {
-						libro = new Libri();
-						libro.id=rs.getInt("id_libri");
-						libro.titolo=rs.getString("titolo");
-						libro.idAutore=rs.getInt("id_autore");
-						libro.idGenere=rs.getInt("id_genere");
-						libro.pubblicazione=rs.getDate("data_pubblicazione").toLocalDate();
-						libro.numPagine=rs.getInt("num_pagine");
-						libro.qnt=rs.getInt("qnt");
-						libro.idEditore=rs.getInt("id_editore");
-						elencoLibri.add(libro);
-					}
-				}
-				System.out.println("Caricamento dati libri dal DataBase avvenuto con successo!");
-			}
+			
+			//elencoLibri
+			elencoLibri=Libri.scaricaLibri(conn);
+			//elenco autori
+			elencoAutori=Autori.scaricaAutori(conn);
+			//elenco generi
+			elencoGeneri=Generi.scaricaGeneri(conn);
+			//elenco editori
+			elencoEditori=Editori.scaricaEditori(conn);
+			
+			System.out.println("Download dati da DataBase avvenuto con successo!");
+			
 		} catch (Exception e) {
 			System.out.println("Connessione non riuscita! Errore: "+e.getMessage());
 		}
@@ -101,60 +100,14 @@ class Main {
 							//chiedo l'autore
 							System.out.print("Inserire l'autore del libro: ");
 							String autore=sc.nextLine();
-							do {
-								libro.idAutore=trovaId(conn, "SELECT id_autori FROM autori WHERE CONCAT(nome,' ',cognome) = ?;", autore, "id_autori");
-								if (libro.idAutore==0) {
-									System.out.println("Autore non presente nel DataBase!");
-									
-									//inserisco il nuovo autore
-									System.out.println("\nProcedere con l'inserimento: ");
-									System.out.print("Inserire il nome del nuovo autore: ");
-									String nomeAutore=sc.nextLine();
-									System.out.print("Inserire il cognome del nuovo autore: ");
-									String cognomeAutore=sc.nextLine();
-									System.out.print("Inserire la data di nascita del nuovo autore: ");
-									LocalDate nascitaAutore= LocalDate.parse(sc.nextLine(), df);
-									
-									String sqlIns= "INSERT INTO autori (nome, cognome, data_nascita) "+"VALUES (?, ?, ?)";
-									try (PreparedStatement inserimento=conn.prepareStatement(sqlIns)) {
-										inserimento.setString(1, nomeAutore);
-										inserimento.setString(2, cognomeAutore);
-										inserimento.setDate(3, Date.valueOf(nascitaAutore));
-										int nInserimenti=inserimento.executeUpdate();
-										if (nInserimenti>0) {
-											System.out.println("Inserimento avvenuto con successo!");
-										}
-									}
-								}else {
-									System.out.println("Id autore: "+libro.idAutore);
-								}
-							}while (libro.idAutore==0);
+							libro.idAutore=Autori.trovaId(autore, elencoAutori, sc, conn, df);
+							elencoAutori=Autori.scaricaAutori(conn);
 							
 							//chiedo il genere
 							System.out.print("Inserire il genere del libro: ");
 							String genere=sc.nextLine();
-							do {
-								libro.idGenere=trovaId(conn, "SELECT id_generi FROM generi WHERE nome = ?;", genere, "id_generi");
-								if (libro.idGenere==0) {
-									System.out.println("Genere non presente nel DataBase!");
-									
-									//inserisco il nuovo genere
-									System.out.println("\nProcedere con l'inserimento: ");
-									System.out.print("Inserire il nome del nuovo genere: ");
-									String nomeGenere=sc.nextLine();
-									
-									String sqlIns= "INSERT INTO autori (nome) "+"VALUES (?)";
-									try (PreparedStatement inserimento=conn.prepareStatement(sqlIns)) {
-										inserimento.setString(1, nomeGenere);
-										int nInserimenti=inserimento.executeUpdate();
-										if (nInserimenti>0) {
-											System.out.println("Inserimento avvenuto con successo!");
-										}
-									}
-								}else {
-									System.out.println("Id genere: "+libro.idGenere);
-								}
-							}while (libro.idGenere==0);
+							libro.idGenere=Generi.trovaId(genere, elencoGeneri, sc, conn, df);
+							elencoGeneri=Generi.scaricaGeneri(conn);
 							
 							//chiedo la data di pubblicazione
 							System.out.print("Inserire la data di pubblicazione: ");
@@ -173,32 +126,8 @@ class Main {
 							//chiedo l'editore
 							System.out.print("Inserire il nome dell'editore: ");
 							String editore=sc.nextLine();
-							do {
-								libro.idEditore=trovaId(conn, "SELECT id_editori FROM editori WHERE nome = ?;", editore, "id_editori");
-								if (libro.idEditore==0) {
-									System.out.println("Editore non presente nel DataBase!");
-									
-									//inserisco il nuovo editore
-									System.out.println("\nProcedere con l'inserimento: ");
-									System.out.print("Inserire il nome del nuovo editore: ");
-									String nomeEditore=sc.nextLine();
-									System.out.print("Inserire il numero di telefono del nuovo editore: ");
-									String numeroEditore=sc.nextLine();
-									
-									String sqlIns= "INSERT INTO autori (nome, num_editore) "+"VALUES (?, ?)";
-									try (PreparedStatement inserimento=conn.prepareStatement(sqlIns)) {
-										inserimento.setString(1, nomeEditore);
-										inserimento.setString(2, numeroEditore);
-										int nInserimenti=inserimento.executeUpdate();
-										if (nInserimenti>0) {
-											System.out.println("Inserimento avvenuto con successo!");
-										}
-									}
-								}else {
-									System.out.println("Id editore: "+libro.idEditore);
-								}
-							}while (libro.idAutore==0);
-							
+							libro.idEditore=Editori.trovaId(editore, elencoEditori, sc, conn, df);
+							elencoEditori=Editori.scaricaEditori(conn);
 							
 							String sql="INSERT INTO libri (id_libri, titolo, id_autore, id_genere, data_pubblicazione, num_pagine, qnt, id_editore) "
 									+ "VALUE (null, ?, ?, ?, ?, ?, ?, ?)";
@@ -217,19 +146,8 @@ class Main {
 								ps.executeUpdate();
 								
 							}
-							//ora devo cercare l'id autoincrementante assegnato dal DB
-							sql = "SELECT id_libri FROM libri WHERE titolo = ?";
-							try (PreparedStatement cercaId=conn.prepareStatement(sql)) {
-								cercaId.setString(1, libro.titolo);
-								
-								try(ResultSet idCercato=cercaId.executeQuery()) {
-									if (idCercato.next()) {
-										libro.id=idCercato.getInt("id_libri");
-									}
-								}
-							}
-							//adesso che ho tutti i dati del libro, lo aggiungo alla lista
-							elencoLibri.add(libro);
+							//aggiorno la lista dei libri
+							elencoLibri=Libri.scaricaLibri(conn);
 							System.out.println("Libro aggiunto con successo!");
 							
 							
@@ -244,19 +162,34 @@ class Main {
 					//passo al caso successivo
 				case "visualizza libri esistenti":
 					System.out.println("\n\n\nVisualizzazione libri");
+					
+					//chiedo se vuole filtri di ricerca
+					System.out.println("Vuoi aggiungere dei filtri alla ricerca?");
+					System.out.print("Aggiungere filtro autore (o lasciare vuoto se nullo):");
+					String filtroAutore=sc.nextLine();
+					System.out.print("Aggiungere filtro genere (o lasciare vuoto se nullo):");
+					String filtroGenere=sc.nextLine();
+					
+					//ArrayList<Libri> elencoFiltrati
+					
 					//scorro la lista dei libri per mostrarli
 					int contatore=0;
 					//uso il ciclo for-each per mostrare ogni elemento della lista elencoLibri
 					for (Libri mostraLibri:elencoLibri) {
 						contatore++;
-						System.out.println("Libro n° "+contatore+"\n");
-						System.out.println("Titolo: "+mostraLibri.titolo);
+						System.out.println("\n\nLibro n° "+contatore+"\n");
 						System.out.println("Id del libro: "+mostraLibri.id);
+						System.out.println("Titolo: "+mostraLibri.titolo);
+						String nomeAutore=Autori.trovaNome(mostraLibri.idAutore, elencoAutori);
+						System.out.println("Autore: "+nomeAutore);
+						String nomeGenere=Generi.trovaNome(mostraLibri.idGenere, elencoGeneri);
+						System.out.println("Genere: "+nomeGenere);
 						System.out.println("Data di pubblicazione: "+mostraLibri.pubblicazione);
 						System.out.println("Numero di pagine: "+mostraLibri.numPagine);
+						String nomeEditore=Editori.trovaNome(mostraLibri.idEditore, elencoEditori);
+						System.out.println("Editore: "+nomeEditore);
 						System.out.println("Quantità: "+mostraLibri.qnt);
 					}
-					// AGGIUNGERE LA VISUALIZZAZIONE DI AUTORE, EDITORE E GENERE!
 					break;
 				//		----- CASO 3 -----
 				case "3":
@@ -439,7 +372,10 @@ class Main {
 					System.out.println("Arrivederci!");
 					break;
 			}
+			System.out.println("Premere INVIO per continuare");
+			sc.nextLine();
 			System.out.println("\n\n\n");
+			
 		} while (!scelta.equals("5"));
 		
 		sc.close();
