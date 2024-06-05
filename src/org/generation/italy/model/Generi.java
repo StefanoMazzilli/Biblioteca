@@ -32,6 +32,11 @@ public class Generi {
 		return elencoGeneri;
 	}
 	
+	@Override
+	public String toString() {
+		return "Generi [id=" + idGenere + ", nome=" + nomeGenere + "]\n";
+	}
+
 	public static int trovaId (String genere, ArrayList<Generi> elencoGeneri, Scanner sc, Connection conn, DateTimeFormatter df) {
 		int idGenere;
 		do {	

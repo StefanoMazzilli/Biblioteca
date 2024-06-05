@@ -70,6 +70,12 @@ public class Autori {
 		return nome;
 	}
 
+	@Override
+	public String toString() {
+		return "Autori [id=" + idAutore + ", nome=" + nomeAutore + ", cognome=" + cognomeAutore
+				+ ", nascita=" + nascita + "]\n";
+	}
+
 	public static void aggiungiAutore (Scanner sc, Connection conn, DateTimeFormatter df) {
 		//inserisco il nuovo autore
 		Autori nuovo=new Autori();

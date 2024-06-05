@@ -20,11 +20,8 @@ class Main {
 
 	public static void main(String[] args) {
 		/* TODO :
-		 * Sistemare PROGRAMMA 2:
-		 *  - Aggiungere filtri di ricerca;
 		 * Aggiungere altre possibilità di ricerca nel PROGRAMMA 4.
 		 * Creare una funzione ANNULLA da usare in qualsiasi momento
-		 * Creare una funzione di aggiornamento dati locali (lista elencoLibri)
 		 */
 		Scanner sc= new Scanner(System.in);
 		String scelta = new String();
@@ -46,10 +43,13 @@ class Main {
 			
 			//elencoLibri
 			elencoLibri=Libri.scaricaLibri(conn);
+			
 			//elenco autori
 			elencoAutori=Autori.scaricaAutori(conn);
+			
 			//elenco generi
 			elencoGeneri=Generi.scaricaGeneri(conn);
+			
 			//elenco editori
 			elencoEditori=Editori.scaricaEditori(conn);
 			
@@ -169,13 +169,22 @@ class Main {
 					String filtroAutore=sc.nextLine();
 					System.out.print("Aggiungere filtro genere (o lasciare vuoto se nullo):");
 					String filtroGenere=sc.nextLine();
+					System.out.println(filtroGenere);
+					//applico i filtri se presenti
+					ArrayList<Libri> elencoFiltrati= elencoLibri;
 					
-					//ArrayList<Libri> elencoFiltrati
+					//filtro autore
+					if (!(filtroAutore.isEmpty())) 
+						elencoFiltrati=Libri.filtraLibriAutore(filtroAutore, elencoFiltrati, elencoAutori);
+					
+					//filtro genere
+					if (!(filtroGenere.isEmpty())) 
+						elencoFiltrati=Libri.filtraLibriGenere(filtroGenere, elencoFiltrati, elencoGeneri);
 					
 					//scorro la lista dei libri per mostrarli
 					int contatore=0;
 					//uso il ciclo for-each per mostrare ogni elemento della lista elencoLibri
-					for (Libri mostraLibri:elencoLibri) {
+					for (Libri mostraLibri:elencoFiltrati) {
 						contatore++;
 						System.out.println("\n\nLibro n° "+contatore+"\n");
 						System.out.println("Id del libro: "+mostraLibri.id);
@@ -372,7 +381,7 @@ class Main {
 					System.out.println("Arrivederci!");
 					break;
 			}
-			System.out.println("Premere INVIO per continuare");
+			System.out.println("\n\nPremere INVIO per continuare");
 			sc.nextLine();
 			System.out.println("\n\n\n");
 			

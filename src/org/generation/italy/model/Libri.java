@@ -46,5 +46,36 @@ public class Libri {
 		return elencoLibri;
 	}
 
+	public static ArrayList<Libri> filtraLibriAutore (String filtro, ArrayList<Libri> elencoLibri, ArrayList<Autori> elencoAutori) {
+		ArrayList<Libri> elencoFiltrati= new ArrayList<Libri>();
+		int id=-1;
+		for (int i = 0; i<elencoAutori.size(); i++) {
+			if ((elencoAutori.get(i).nomeAutore+" "+elencoAutori.get(i).cognomeAutore).indexOf(filtro)>=0) {
+				id=elencoAutori.get(i).idAutore;
+			}
+		}
+		int idFiltroAutore=id;
+		elencoFiltrati = (ArrayList<Libri>) elencoLibri.stream().filter(lib -> lib.idAutore==idFiltroAutore).collect(Collectors.toList());
+		return elencoFiltrati;
+	}
 	
+	public static ArrayList<Libri> filtraLibriGenere (String filtro, ArrayList<Libri> elencoLibri, ArrayList<Generi> elencoGeneri) {
+		ArrayList<Libri> elencoFiltrati= new ArrayList<Libri>();
+		int id=-1;
+		for (int j = 0; j<elencoGeneri.size(); j++) {
+			if (elencoGeneri.get(j).nomeGenere.indexOf(filtro)>=0) {
+				id=elencoGeneri.get(j).idGenere;
+			}
+		}
+		int idFiltroGenere=id;
+		elencoFiltrati = (ArrayList<Libri>) elencoLibri.stream().filter(lib -> lib.idGenere==idFiltroGenere).collect(Collectors.toList());
+		return elencoFiltrati;
+	}
+
+	@Override
+	public String toString() {
+		return "Libri [id=" + id + ", titolo=" + titolo + ", idAutore=" + idAutore + ", idGenere=" + idGenere
+				+ ", pubblicazione=" + pubblicazione + ", numPagine=" + numPagine + ", qnt=" + qnt + ", idEditore="
+				+ idEditore + "]\n";
+	}
 }
